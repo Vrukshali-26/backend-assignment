@@ -8,13 +8,17 @@ const {
   deleteGoals,
 } = require("../controllers/secureController");
 const { protect } = require("../middleware/authMiddleware");
+const { limiter } = require("../middleware/rateLimiter");
 
 router.post("/signup", registerUser);
 router.post("/login", loginUser);
-router.route("/goals").get(protect, myGoals).post(protect, createGoals);
+router
+  .route("/goals")
+  .get(protect, limiter, myGoals)
+  .post(protect, limiter, createGoals);
 router
   .route("/goals/:id")
-  .put(protect, updateGoals)
-  .delete(protect, deleteGoals);
+  .put(protect, limiter, updateGoals)
+  .delete(protect, limiter, deleteGoals);
 
 module.exports = router;
