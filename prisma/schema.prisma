@@ -15,4 +15,12 @@ model User {
   username String @unique
   email String  @unique
   password String
+  goals Goals[]
+}
+
+model Goals {
+  id Int @id @default(autoincrement())
+  user User @relation(fields: [userId], references: [id])
+  userId    Int    
+  title String
 }

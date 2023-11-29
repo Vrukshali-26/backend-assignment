@@ -56,11 +56,11 @@ const loginUser = asyncHandler(async (req, res) => {
 
     // check for username and email
     const user = await prisma.user.findUnique({ where: { username } });
-
+    // console.log(user);
     if (user && (await verifyPassword(password, user.password))) {
       res.json({
         message: "Logged in successfully",
-        token: generateToken(user._id),
+        token: generateToken(user.id),
       });
     } else {
       res.status(400);
