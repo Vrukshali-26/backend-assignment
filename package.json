@@ -4,7 +4,8 @@
   "description": "Datifyy Assignment",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon src/index.js"
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
   },
   "author": "Vrukshali",
   "license": "MIT",
@@ -20,6 +21,13 @@
     "node-fetch": "^2.6.1"
   },
   "devDependencies": {
-    "prisma": "^5.6.0"
+    "jest": "^29.7.0",
+    "prisma": "^5.6.0",
+    "supertest": "^6.3.3"
+  },
+  "jest": {
+    "setupFilesAfterEnv": [
+      "./tests/setup.js"
+    ]
   }
 }
