@@ -1,88 +1,74 @@
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
 const asyncHandler = require("express-async-handler");
-const User = require("../model/userModel");
+const { PrismaClient } = require("@prisma/client");
+const { hashPassword, verifyPassword } = require("../utils/hashPassword");
+const { generateToken } = require("../utils/generateToken");
+
+const prisma = new PrismaClient();
 
 // @desc    Create a user
-// @route   POST /api/users
+// @route   POST /api/user/signup
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password } = req.body;
-  if (!name || !email || !password) {
-    res.status(400);
-    throw new Error("Please add all fields");
-  }
+  try {
+    const { username, email, password } = req.body;
+    if (!username || !email || !password) {
+      res.status(400);
+      throw new Error("Please add all fields");
+    }
 
-  // check if user exist
-  const userExists = await User.find({ email });
-  if (userExists) {
-    res.status(400);
-    throw new Error("User already exists");
-  }
-
-  // hash the password
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
-  // create user
-  const user = await User.create({
-    name,
-    email,
-    password: hashedPassword,
-  });
-
-  if (user) {
-    res.status(201).json({
-      _id: user.id,
-      name: user.name,
-      email: user.email,
-      token: generateToken(user._id),
+    // check if user exist
+    const userExists = await prisma.user.findFirst({
+      where: {
+        OR: [{ username }, { email }],
+      },
     });
-  } else {
-    res.status(400);
-    throw new Error("invalid User data");
+
+    if (userExists) {
+      res.status(400);
+      throw new Error("User already exists");
+    }
+
+    // if user doesn't exist then create the user
+    const hashedPassword = await hashPassword(password);
+    const user = await prisma.user.create({
+      data: { username, email, password: hashedPassword },
+    });
+
+    if (user) {
+      res.status(201).json({
+        message: "User created successfully",
+      });
+    } else {
+      res.status(400);
+      throw new Error("Invalid User data");
+    }
+  } catch (error) {
+    throw new Error(error.message);
   }
 });
 
 // @desc    Authenticate a user
-// @route   POST /api/users/login
+// @route   POST /api/user/login
 // @access  Public
 const loginUser = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { username, password } = req.body;
 
-  //  check for user email
-  const user = await User.findOne({ email });
+    // check for username and email
+    const user = await prisma.user.findUnique({ where: { username } });
 
-  if (user && (await bcrypt.compare(password, user.password))) {
-    res.json({
-      _id: user.id,
-      name: user.name,
-      email: user.email,
-      token: generateToken(user._id),
-    });
-  } else {
-    res.status(400);
-    throw new Error("invalid creds");
+    if (user && (await verifyPassword(password, user.password))) {
+      res.json({
+        message: "Logged in successfully",
+        token: generateToken(user._id),
+      });
+    } else {
+      res.status(400);
+      throw new Error("Invalid Credentials");
+    }
+  } catch (error) {
+    throw new Error(error.message);
   }
 });
 
-// @desc    Get a user
-// @route   GET /api/users/me
-// @access  Private
-const getMe = asyncHandler(async (req, res) => {
-  const { _id, name, email } = await User.findById(req.user.id);
-  res.status(200).json({
-    id: _id,
-    name,
-    email,
-  });
-});
-
-// Generate Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: "30d",
-  });
-};
-
-module.exports = { registerUser, loginUser, getMe };
+module.exports = { registerUser, loginUser };
